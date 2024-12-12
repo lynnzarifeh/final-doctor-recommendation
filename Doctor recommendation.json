@@ -1,0 +1,62 @@
+flask import Flask, request, jsonify
+import os
+
+# Initialize the Flask app
+app = Flask(__name__)
+
+# Sample data: Replace this with your synchronized contact list data
+contacts = [
+    {"id": 1, "name": "Dr. John Doe", "city": "New York", "fees": 1500, "recommendation": 4.8},
+    {"id": 2, "name": "Dr. Jane Smith", "city": "Los Angeles", "fees": 2000, "recommendation": 4.5},
+]
+
+# API endpoint to fetch all contacts
+@app.route('/contacts', methods=['GET'])
+def get_contacts():
+    return jsonify(contacts)
+
+# API endpoint to add a new contact
+@app.route('/contacts', methods=['POST'])
+def add_contact():
+    new_contact = request.get_json()
+    new_contact['id'] = len(contacts) + 1  # Assign a new ID
+    contacts.append(new_contact)
+    return jsonify({"message": "Contact added successfully!", "contact": new_contact}), 201
+
+# API endpoint to update a contact
+@app.route('/contacts/<int:contact_id>', methods=['PUT'])
+def update_contact(contact_id):
+    for contact in contacts:
+        if contact['id'] == contact_id:
+            data = request.get_json()
+            contact.update(data)
+            return jsonify({"message": "Contact updated successfully!", "contact": contact})
+    return jsonify({"message": "Contact not found!"}), 404
+
+# API endpoint to delete a contact
+@app.route('/contacts/<int:contact_id>', methods=['DELETE'])
+def delete_contact(contact_id):
+    global contacts
+    contacts = [contact for contact in contacts if contact['id'] != contact_id]
+    return jsonify({"message": "Contact deleted successfully!"})
+
+# Recommendation engine endpoint
+@app.route('/recommend', methods=['GET'])
+def recommend():
+    city = request.args.get('city')
+    max_fees = float(request.args.get('max_fees', 2000))
+    min_recommendation = float(request.args.get('min_recommendation', 4.0))
+
+    recommendations = [
+        contact for contact in contacts
+        if contact['city'].lower() == city.lower() and
+           contact['fees'] <= max_fees and
+           contact['recommendation'] >= min_recommendation
+    ]
+
+    return jsonify(recommendations)
+
+# Azure App Service requires the app to run on port provided by the environment
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
